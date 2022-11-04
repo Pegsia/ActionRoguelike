@@ -6,32 +6,77 @@
 #include "GameFramework/Character.h"
 #include "TioCharacter.generated.h"
 
-class UCameraComponent;
 class USpringArmComponent;
+class UCameraComponent;
+class UTioInteractionComponent;
+class UTioAttributeComponent;
 
 UCLASS()
 class ACTIONROGUELIKE_API ATioCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+protected:
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	TSubclassOf<AActor>	ProjectileClass;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	TSubclassOf<AActor> BlackHoleProjectileClass;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	TSubclassOf<AActor> DashProjectileClass;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	UAnimMontage* AttackAnim;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float AttackAnimeDelay;
+
+	FTimerHandle TimerHandle_PrimaryAttack;
+
 public:
 	// Sets default values for this character's properties
 	ATioCharacter();
 
 protected:
-
+	// start with U is unreal macros
 	UPROPERTY(VisibleAnywhere)
 	USpringArmComponent* SpringArmComp;
 
 	UPROPERTY(VisibleAnywhere)
 	UCameraComponent* CameraComp;
 
+	UPROPERTY(VisibleAnywhere)
+	UTioInteractionComponent* InteractionComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	UTioAttributeComponent* AttributeComp;
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	void MoveForward(float value);
+	void MoveRight(float value);
 
-public:	
+	void SpawnProjectile(TSubclassOf<AActor> ClassToSpawn);
+
+	void PrimaryAttack();
+	void PrimaryAttack_TimeElapsed();
+
+	void BlackHoleAttack();
+	void BlackHoleAttack_TimeElapsed();
+
+	void Dash();
+	void Dash_TimeElapsed();
+
+	void PrimaryInteract();
+
+	UFUNCTION()
+	void OnHealthChanged(AActor* InstigatorActor, UTioAttributeComponent* OwninComp, float NewHealth, float Delta);
+
+	virtual void PostInitializeComponents() override;
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
