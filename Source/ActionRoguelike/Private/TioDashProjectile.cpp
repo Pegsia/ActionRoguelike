@@ -33,7 +33,8 @@ void ATioDashProjectile::Explode_Implementation()
 	MoveComp->StopMovementImmediately();
 	SetActorEnableCollision(false);
 
-	GetWorldTimerManager().SetTimer(TimerHandle_DelayedDetonate, this, &ATioDashProjectile::TeleportInstigator, DetonateDelay);
+	FTimerHandle TimerHandle_DelayedTeleport;
+	GetWorldTimerManager().SetTimer(TimerHandle_DelayedTeleport, this, &ATioDashProjectile::TeleportInstigator, DetonateDelay);
 }
 
 void ATioDashProjectile::TeleportInstigator()

@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "TioProjectileBase.generated.h"
 
+class USoundCue;
 class UParticleSystem;
 class USphereComponent;
 class UParticleSystemComponent;
@@ -21,6 +22,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Effects")
 	UParticleSystem* ImpactVFX;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Effects")
+	USoundCue* ImpactSound;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USphereComponent *SphereComp;
 
@@ -29,6 +33,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UParticleSystemComponent* EffectComp;
+
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UAudioComponent* AudioComp;
+
 
 	// virtual so we can override this in child-classes
 	UFUNCTION()

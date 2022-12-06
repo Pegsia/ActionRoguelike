@@ -8,6 +8,7 @@
 #include "TioInteractionComponent.h"
 #include "DrawDebugHelpers.h"
 #include "TioAttributeComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values
@@ -16,22 +17,25 @@ ATioCharacter::ATioCharacter()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>("SpringArmComp");
+	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->bUsePawnControlRotation = true;
 	SpringArmComp->SetupAttachment(RootComponent);
 
-	CameraComp = CreateDefaultSubobject<UCameraComponent>("CameraComp");
+	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
 
-	InteractionComp = CreateDefaultSubobject<UTioInteractionComponent>("InteractionComp");
+	InteractionComp = CreateDefaultSubobject<UTioInteractionComponent>(TEXT("InteractionComp"));
 
-	AttributeComp = CreateDefaultSubobject<UTioAttributeComponent>("AttributeComp");
+	AttributeComp = CreateDefaultSubobject<UTioAttributeComponent>(TEXT("AttributeComp"));
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 
 	bUseControllerRotationYaw = false;
 
 	AttackAnimeDelay = 0.16f;
+
+	TimeToHitParamName = "TimeToHit";
+	HandSocketName = "Muzzle_01";
 }
 
 void ATioCharacter::PostInitializeComponents()
@@ -53,19 +57,19 @@ void ATioCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 
-	const float DrawScale = 100.0f;
-	const float Thickness = 5.0f;
+	//const float DrawScale = 100.0f;
+	//const float Thickness = 5.0f;
 
-	FVector LineStart = GetActorLocation();
-	// offset to the right of pawn
-	LineStart += GetActorRightVector() * 100.0f;
-	// Set line end in direction of the actor's forward
-	FVector ActorDirection_LineEnd = LineStart + (GetActorForwardVector() * 100.0f);
-	// Draw Actor's Direction
-	DrawDebugDirectionalArrow(GetWorld(), LineStart, ActorDirection_LineEnd, DrawScale, FColor::Yellow, false, 0.0f, 0, Thickness);
+	//FVector LineStart = GetActorLocation();
+	//// offset to the right of pawn
+	//LineStart += GetActorRightVector() * 100.0f;
+	//// Set line end in direction of the actor's forward
+	//FVector ActorDirection_LineEnd = LineStart + (GetActorForwardVector() * 100.0f);
+	//// Draw Actor's Direction
+	//DrawDebugDirectionalArrow(GetWorld(), LineStart, ActorDirection_LineEnd, DrawScale, FColor::Yellow, false, 0.0f, 0, Thickness);
 
-	FVector ControllerDirection_LineEnd = LineStart + (GetControlRotation().Vector() * 100.0f);
-	DrawDebugDirectionalArrow(GetWorld(), LineStart, ControllerDirection_LineEnd, DrawScale, FColor::Green, false, 0.0f, 0, Thickness);
+	//FVector ControllerDirection_LineEnd = LineStart + (GetControlRotation().Vector() * 100.0f);
+	//DrawDebugDirectionalArrow(GetWorld(), LineStart, ControllerDirection_LineEnd, DrawScale, FColor::Green, false, 0.0f, 0, Thickness);
 }
 
 // Called to bind functionality to input
@@ -118,8 +122,7 @@ void ATioCharacter::MoveRight(float value)
 
 void ATioCharacter::PrimaryAttack()
 {
-	PlayAnimMontage(AttackAnim);
-
+	StartAttackEffects();
 	GetWorldTimerManager().SetTimer(TimerHandle_PrimaryAttack, this, &ATioCharacter::PrimaryAttack_TimeElapsed, AttackAnimeDelay);
 }
 
@@ -130,8 +133,8 @@ void ATioCharacter::PrimaryAttack_TimeElapsed()
 
 void ATioCharacter::BlackHoleAttack()
 {
-	PlayAnimMontage(AttackAnim);
-	GetWorldTimerManager().SetTimer(TimerHandle_PrimaryAttack, this, &ATioCharacter::BlackHoleAttack_TimeElapsed, AttackAnimeDelay);
+	StartAttackEffects();
+	GetWorldTimerManager().SetTimer(TimerHandle_BlackholeAttack, this, &ATioCharacter::BlackHoleAttack_TimeElapsed, AttackAnimeDelay);
 }
 
 void ATioCharacter::BlackHoleAttack_TimeElapsed()
@@ -141,8 +144,8 @@ void ATioCharacter::BlackHoleAttack_TimeElapsed()
 
 void ATioCharacter::Dash()
 {
-	PlayAnimMontage(AttackAnim);
-	GetWorldTimerManager().SetTimer(TimerHandle_PrimaryAttack, this, &ATioCharacter::Dash_TimeElapsed, AttackAnimeDelay);
+	StartAttackEffects();
+	GetWorldTimerManager().SetTimer(TimerHandle_Dash, this, &ATioCharacter::Dash_TimeElapsed, AttackAnimeDelay);
 }
 
 void ATioCharacter::Dash_TimeElapsed()
@@ -150,11 +153,18 @@ void ATioCharacter::Dash_TimeElapsed()
 	SpawnProjectile(DashProjectileClass);
 }
 
+void ATioCharacter::StartAttackEffects()
+{
+	PlayAnimMontage(AttackAnim);
+
+	UGameplayStatics::SpawnEmitterAttached(CastingEffect, GetMesh(), HandSocketName, FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::SnapToTarget);
+}
+
 void ATioCharacter::SpawnProjectile(TSubclassOf<AActor> ClassToSpawn)
 {
 	if (ensureAlways(ClassToSpawn))
 	{
-		FVector HandLocation = GetMesh()->GetSocketLocation("Muzzle_01");
+		FVector HandLocation = GetMesh()->GetSocketLocation(HandSocketName);
 		
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -196,6 +206,13 @@ void ATioCharacter::PrimaryInteract()
 
 void ATioCharacter::OnHealthChanged(AActor* InstigatorActor, UTioAttributeComponent* OwninComp, float NewHealth, float Delta)
 {
+	UE_LOG(LogTemp, Log, TEXT("ACTOR Health %f Take %f Damage"), NewHealth, Delta);
+	if (Delta < 0.0f)
+	{
+		UE_LOG(LogTemp, Log, TEXT("ACTOR Hit"));
+		GetMesh()->SetScalarParameterValueOnMaterials(TimeToHitParamName, GetWorld()->TimeSeconds);
+	}
+
 	if (NewHealth <= 0.0f && Delta < 0.0f)
 	{
 		APlayerController* PC = Cast<APlayerController>(GetController());

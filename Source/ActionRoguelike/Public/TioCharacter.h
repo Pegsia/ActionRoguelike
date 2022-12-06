@@ -18,6 +18,12 @@ class ACTIONROGUELIKE_API ATioCharacter : public ACharacter
 
 protected:
 
+	UPROPERTY(VisibleAnywhere, Category = "Effects")
+	FName TimeToHitParamName;
+
+	UPROPERTY(VisibleAnywhere, Category = "Effects")
+	FName HandSocketName;
+
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	TSubclassOf<AActor>	ProjectileClass;
 
@@ -31,9 +37,14 @@ protected:
 	UAnimMontage* AttackAnim;
 
 	UPROPERTY(EditAnywhere, Category = "Attack")
+	UParticleSystem* CastingEffect;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
 	float AttackAnimeDelay;
 
 	FTimerHandle TimerHandle_PrimaryAttack;
+	FTimerHandle TimerHandle_BlackholeAttack;
+	FTimerHandle TimerHandle_Dash;
 
 public:
 	// Sets default values for this character's properties
@@ -52,7 +63,7 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	UTioAttributeComponent* AttributeComp;
-
+	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
@@ -69,6 +80,8 @@ protected:
 
 	void Dash();
 	void Dash_TimeElapsed();
+
+	void StartAttackEffects();
 
 	void PrimaryInteract();
 

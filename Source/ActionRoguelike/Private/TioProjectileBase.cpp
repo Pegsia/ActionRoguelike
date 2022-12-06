@@ -5,7 +5,9 @@
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Particles/ParticleSystemComponent.h"
-#include <Kismet/GameplayStatics.h>
+#include "Kismet/GameplayStatics.h"
+#include "Components/AudioComponent.h"
+#include "Sound/SoundCue.h"
 
 
 // Sets default values
@@ -18,6 +20,9 @@ ATioProjectileBase::ATioProjectileBase()
 
 	EffectComp = CreateDefaultSubobject<UParticleSystemComponent>("EffectComp");
 	EffectComp->SetupAttachment(RootComponent);
+
+	AudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("AudioComp"));
+	AudioComp->SetupAttachment(RootComponent);
 
 	MoveComp = CreateDefaultSubobject<UProjectileMovementComponent>("MoveComp");
 	MoveComp->bRotationFollowsVelocity = true;
@@ -39,6 +44,8 @@ void ATioProjectileBase::Explode_Implementation()
 	if (ensure(!IsPendingKill()))
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(this, ImpactVFX, GetActorLocation(), GetActorRotation());
+		
+		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
 		
 		Destroy();
 	}
