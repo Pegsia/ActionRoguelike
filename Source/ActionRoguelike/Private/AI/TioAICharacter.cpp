@@ -10,6 +10,8 @@
 #include "BrainComponent.h"
 #include "TioWorldUserWidget.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
 ATioAICharacter::ATioAICharacter()
@@ -19,6 +21,9 @@ ATioAICharacter::ATioAICharacter()
     AttributeComp = CreateDefaultSubobject<UTioAttributeComponent>("AttributeComp");
 
     AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+    GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Ignore);
+    GetMesh()->SetGenerateOverlapEvents(true);
 
     TimeToHitParamName = "TimeToHit";
 }
@@ -52,10 +57,10 @@ void ATioAICharacter::OnHealthChanged(AActor* InstigatorActor, UTioAttributeComp
 			}
         }
         
-
         //UE_LOG(LogTemp, Log, TEXT("Health %f Take %f Damage"), NewHealth, Delta);
         if (NewHealth <= 0.0f)
         {
+            ActiveHealthBar->RemoveFromParent();
             //UE_LOG(LogTemp, Log, TEXT("Bot dead"));
             // stop BT
             AAIController* AIC = Cast<AAIController>(GetController());
@@ -66,6 +71,9 @@ void ATioAICharacter::OnHealthChanged(AActor* InstigatorActor, UTioAttributeComp
             // rag doll
             GetMesh()->SetAllBodiesSimulatePhysics(true);
             GetMesh()->SetCollisionProfileName("Ragdoll");
+
+            GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+            GetCharacterMovement()->DisableMovement();
 
             // set lifespan(how long we call destory() on ourselfs
             SetLifeSpan(10.0f);

@@ -44,6 +44,11 @@ void ATioCharacter::PostInitializeComponents()
 	AttributeComp->OnHealthChanged.AddDynamic(this, &ATioCharacter::OnHealthChanged);
 }
 
+FVector ATioCharacter::GetPawnViewLocation() const
+{
+	return CameraComp->GetComponentLocation();
+}
+
 // Called when the game starts or when spawned
 void ATioCharacter::BeginPlay()
 {
@@ -90,6 +95,11 @@ void ATioCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("PrimaryInteract", IE_Pressed, this, &ATioCharacter::PrimaryInteract);
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ATioCharacter::Jump);
+}
+
+void ATioCharacter::Healself(float Amount /* = 100 */)
+{
+	AttributeComp->ApplyHealthChange(this, Amount);
 }
 
 void ATioCharacter::MoveForward(float value)

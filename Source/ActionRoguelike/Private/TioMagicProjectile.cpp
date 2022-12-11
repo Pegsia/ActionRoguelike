@@ -6,6 +6,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "TioAttributeComponent.h"
+#include "TioGameplayFunctionLibrary.h"
 
 // Sets default values
 ATioMagicProjectile::ATioMagicProjectile()
@@ -24,12 +25,16 @@ void ATioMagicProjectile::OnActorOverlap(UPrimitiveComponent* OverlappedComponen
 {
 	if (OtherActor && OtherActor != GetInstigator())
 	{
-		UTioAttributeComponent* AttributeComp = Cast<UTioAttributeComponent>(OtherActor->GetComponentByClass(UTioAttributeComponent::StaticClass()));
-		// DeBug时候没有反应是因为编译器进行了优化把Development Editor改成DebugGame就行了
-		if (AttributeComp)
-		{
-			AttributeComp->ApplyHealthChange(GetInstigator(), -DamageAmount);
+		//UTioAttributeComponent* AttributeComp = UTioAttributeComponent::GetAttributes(OtherActor);
+		//// DeBug时候没有反应是因为编译器进行了优化把Development Editor改成DebugGame就行了
+		//if (AttributeComp)
+		//{
+		//	AttributeComp->ApplyHealthChange(GetInstigator(), -DamageAmount);
 
+		//	Explode();
+		//}
+		if (UTioGameplayFunctionLibrary::ApplyDirectionDamage(GetInstigator(), OtherActor, DamageAmount, SweepResult))
+		{
 			Explode();
 		}
 	}
