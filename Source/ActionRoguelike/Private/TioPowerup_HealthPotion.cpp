@@ -3,14 +3,13 @@
 
 #include "TioPowerup_HealthPotion.h"
 #include "TioAttributeComponent.h"
+#include "TioPlayerState.h"
 
 ATioPowerup_HealthPotion::ATioPowerup_HealthPotion()
 {
-	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>("MeshComp");
-	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	MeshComp->SetupAttachment(RootComponent);
-
 	HealAmount = 40.0f;
+
+	CreditsCost = 50;
 }
 
 void ATioPowerup_HealthPotion::Interact_Implementation(APawn* InstigatorPawn)
@@ -19,12 +18,15 @@ void ATioPowerup_HealthPotion::Interact_Implementation(APawn* InstigatorPawn)
 	{
 		return;
 	}
-	UTioAttributeComponent* AttributeComp = Cast<UTioAttributeComponent>(InstigatorPawn->GetComponentByClass(UTioAttributeComponent::StaticClass()));
+	UTioAttributeComponent* AttributeComp = UTioAttributeComponent::GetAttributes(InstigatorPawn);
 	if (ensure(AttributeComp) && !AttributeComp->IsFullHealth())
 	{
-		if (AttributeComp->ApplyHealthChange(this, HealAmount))
+		if (ATioPlayerState* PS = InstigatorPawn->GetPlayerState<ATioPlayerState>())
 		{
-			HideAndCooldownPowerup();
+			if (PS->RemoveCredits(CreditsCost) && AttributeComp->ApplyHealthChange(this, HealAmount))
+			{
+				HideAndCooldownPowerup();
+			}
 		}
 	}
 }

@@ -5,6 +5,7 @@
 #include "TioWorldUserWidget.h"
 #include "AI/TioAICharacter.h"
 #include "TioGameModeBase.h"
+#include "Net/UnrealNetwork.h"
 
 static TAutoConsoleVariable<float> CVarDamageMultiplier(TEXT("tio.DamageMultiplier"), 1.0f, TEXT("Global Damage Modifier for Attribute Component."), ECVF_Cheat);
 
@@ -13,6 +14,11 @@ UTioAttributeComponent::UTioAttributeComponent()
 {
 	HealthMax = 100;
 	Health = HealthMax;
+
+	Rage = 0;
+	RageMax = 100;
+
+	SetIsReplicatedByDefault(true);
 }
 
 bool UTioAttributeComponent::Kill(AActor* InstigatorActor)
@@ -55,21 +61,49 @@ bool UTioAttributeComponent::ApplyHealthChange(AActor* InstigatorActor, float De
 	}
 
 	float OldHealth = Health;
+	float NewHealth = FMath::Clamp(Health + Delta, 0.0f, HealthMax);
 
-	Health = FMath::Clamp(Health + Delta, 0.0f, HealthMax);
+	float ActualDelta = NewHealth - OldHealth;
 
-	float ActualDelta = Health - OldHealth;
-	OnHealthChanged.Broadcast(InstigatorActor, this, Health, ActualDelta);
-
-	// Died
-	if (ActualDelta < 0.0f && Health == 0.0f)
+	// 只在server上改变健康数据，同时保持ActualDelta的计算用来返回该角色是否可被伤害
+	if (GetOwner()->HasAuthority())
 	{
-		// GameMode only on Server and Auth is sense for authority which is the server
-		ATioGameModeBase* GM = GetWorld()->GetAuthGameMode<ATioGameModeBase>();
-		if (GM)
+		Health = NewHealth; // Health改变后，自动传播给客户端
+
+		if (ActualDelta != 0.0f) // 对于多人游戏，尽可能的减少传播
 		{
-			GM->OnActorKilled(GetOwner(), InstigatorActor);
+			MulticastHealthChanged(InstigatorActor, Health, ActualDelta);
 		}
+
+		if (ActualDelta < 0.0f && Health == 0.0f) // Died，只有server上存在GameMode，所以不用在client上检查该项
+		{
+			// GameMode only on Server and Auth is sense for authority which is the server
+			ATioGameModeBase* GM = GetWorld()->GetAuthGameMode<ATioGameModeBase>();
+			if (GM)
+			{
+				GM->OnActorKilled(GetOwner(), InstigatorActor);
+			}
+		}
+	}
+
+	return ActualDelta != 0;
+}
+
+float UTioAttributeComponent::GetRage() const
+{
+	return Rage;
+}
+
+bool UTioAttributeComponent::ApplyRageChange(AActor* InstigatorActor, float Delta)
+{
+	float OldRage = Rage;
+
+	Rage = FMath::Clamp(Rage + Delta, 0.0f, RageMax);
+	float ActualDelta = Rage - OldRage;
+
+	if (ActualDelta != 0.0f)
+	{
+		MulticastRageChanged(InstigatorActor, Rage, ActualDelta);
 	}
 
 	return ActualDelta != 0;
@@ -95,3 +129,23 @@ bool UTioAttributeComponent::IsActorAlive(AActor* Actor)
 	return false;
 }
 
+void UTioAttributeComponent::MulticastHealthChanged_Implementation(AActor* Instigator, float NewHealth, float Delta)
+{
+	OnHealthChanged.Broadcast(Instigator, this, NewHealth, Delta);
+}
+
+void UTioAttributeComponent::MulticastRageChanged_Implementation(AActor* Instigator, float NewRage, float Delta)
+{
+	OnRageChanged.Broadcast(Instigator, this, NewRage, Delta);
+}
+
+void UTioAttributeComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UTioAttributeComponent, Health);
+	DOREPLIFETIME(UTioAttributeComponent, HealthMax);
+
+	DOREPLIFETIME(UTioAttributeComponent, Rage);
+	DOREPLIFETIME(UTioAttributeComponent, RageMax);
+}

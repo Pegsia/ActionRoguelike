@@ -10,16 +10,38 @@
 class UEnvQuery;
 class UEnvQueryInstanceBlueprintWrapper;
 class UCurveFloat;
+class UTioSaveGame;
 
-/**
- * 
- */
 UCLASS()
 class ACTIONROGUELIKE_API ATioGameModeBase : public AGameModeBase
 {
 	GENERATED_BODY()
 
 protected:
+
+	FString SlotName;
+
+	UPROPERTY()
+	UTioSaveGame* CurrentSaveGame;
+
+	/*Distance required between power-up spawn locations*/
+	UPROPERTY(EditDefaultsOnly, Category = "Powerup")
+	float RequiredPowerupDistance;
+
+	/*Amount of power-up to spawn during match start*/
+	UPROPERTY(EditDefaultsOnly, Category = "Powerup")
+	int32 DesiredPowerupCount;
+
+	/*All power-up classes used to spawn with EQS*/
+	UPROPERTY(EditDefaultsOnly, Category = "Powerup")
+	TArray<TSubclassOf<AActor>> PowerupClasses;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Powerup")
+	UEnvQuery* PowerupQuery;
+
+	// Minion/AI
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite,Category = "AI")
+	int32 CreditsPerKill;
 
 	UPROPERTY(EditDefaultsOnly, Category = "AI")
 	TSubclassOf<AActor> MinionClass;
@@ -36,6 +58,9 @@ protected:
 	float SpawnTimerInterval;
 
 	UFUNCTION()
+	void OnPowerupQueryComplete(UEnvQueryInstanceBlueprintWrapper* QueryInstance, EEnvQueryStatus::Type QueryStatus);
+
+	UFUNCTION()
 	void SpawnBotTimerElapsed();
 
 	UFUNCTION()
@@ -46,12 +71,24 @@ protected:
 
 public:
 
-	virtual void OnActorKilled(AActor* VictimActor, AActor* Killer);
+	// The GameMode's InitGame() event is called before any other functions(including PreInitializeComponents())
+	void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 
-	ATioGameModeBase();
+	/** Signals that a player is ready to enter the game, which may start it up */
+	void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 
 	virtual void StartPlay() override;
 
+	virtual void OnActorKilled(AActor* VictimActor, AActor* Killer);
+
 	UFUNCTION(Exec)
 	void KillAll();
+	
+	ATioGameModeBase();
+
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
+	void WriteSaveGame();
+
+	void LoadSaveGame();
+
 };

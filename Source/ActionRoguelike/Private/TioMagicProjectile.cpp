@@ -7,6 +7,8 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "TioAttributeComponent.h"
 #include "TioGameplayFunctionLibrary.h"
+#include "TioActionComponent.h"
+#include "TioActionEffect.h"
 
 // Sets default values
 ATioMagicProjectile::ATioMagicProjectile()
@@ -25,17 +27,23 @@ void ATioMagicProjectile::OnActorOverlap(UPrimitiveComponent* OverlappedComponen
 {
 	if (OtherActor && OtherActor != GetInstigator())
 	{
-		//UTioAttributeComponent* AttributeComp = UTioAttributeComponent::GetAttributes(OtherActor);
-		//// DeBug时候没有反应是因为编译器进行了优化把Development Editor改成DebugGame就行了
-		//if (AttributeComp)
-		//{
-		//	AttributeComp->ApplyHealthChange(GetInstigator(), -DamageAmount);
+		UTioActionComponent* ActionComp = Cast<UTioActionComponent>(OtherActor->GetComponentByClass(UTioActionComponent::StaticClass()));
+		if (ActionComp && ActionComp->ActiveGameplayTags.HasTag(ParryTag))
+		{
+			// 如果被击中用户可以回避炮弹，那么将炮弹反向，并将炮弹的insigator设为用户并且返回
+			MoveComp->Velocity = -MoveComp->Velocity;
+			SetInstigator(Cast<APawn>(OtherActor));
+			return;
+		}
 
-		//	Explode();
-		//}
 		if (UTioGameplayFunctionLibrary::ApplyDirectionDamage(GetInstigator(), OtherActor, DamageAmount, SweepResult))
 		{
 			Explode();
+			// AddAction是关于GameState的操作，故只应在服务器上运行
+			if (ActionComp && HasAuthority() && EffectActionClass) //add effect action if the projectile have
+			{
+				ActionComp->AddAction(GetInstigator(), EffectActionClass);
+			}
 		}
 	}
 }

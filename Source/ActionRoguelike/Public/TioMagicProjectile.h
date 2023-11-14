@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "TioProjectileBase.h"
+#include "GameplayTagContainer.h"
 #include "TioMagicProjectile.generated.h"
+
+class UTioActionEffect;
 
 UCLASS()
 class ACTIONROGUELIKE_API ATioMagicProjectile : public ATioProjectileBase
@@ -12,6 +15,12 @@ class ACTIONROGUELIKE_API ATioMagicProjectile : public ATioProjectileBase
 	GENERATED_BODY()
 	
 protected:
+
+	UPROPERTY(EditDefaultsOnly, Category = "Damage")
+	TSubclassOf<UTioActionEffect> EffectActionClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Damage")
+	FGameplayTag ParryTag;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Damage")
 	float DamageAmount;

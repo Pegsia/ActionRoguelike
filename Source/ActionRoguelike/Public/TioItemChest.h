@@ -13,17 +13,23 @@ class ACTIONROGUELIKE_API ATioItemChest : public AActor, public ITioGameplayInte
 	GENERATED_BODY()
 
 public:
-
 	UPROPERTY(EditAnywhere)
 	float TargetPitch;
 
 	void Interact_Implementation(APawn* InstigatorPawn);
+	
+	void OnActorLoaded_Implementation();
 
-public:	
-	// Sets default values for this actor's properties
 	ATioItemChest();
 
 protected:
+
+	// ReplicatedUsing = RepNotify 用来表示触发的函数
+	UPROPERTY(ReplicatedUsing = "OnRep_LidOpened", BlueprintReadOnly, SaveGame) 
+	bool bLidOpened;
+
+	UFUNCTION()
+	void OnRep_LidOpened();
 
 	UPROPERTY(VisibleAnywhere)
 	UStaticMeshComponent* BaseMesh;

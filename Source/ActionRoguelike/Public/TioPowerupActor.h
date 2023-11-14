@@ -8,6 +8,7 @@
 #include "TioPowerupActor.generated.h"
 
 class USphereComponent;
+class UStaticMeshComponent;
 
 UCLASS()
 class ACTIONROGUELIKE_API ATioPowerupActor : public AActor, public ITioGameplayInterface
@@ -15,6 +16,12 @@ class ACTIONROGUELIKE_API ATioPowerupActor : public AActor, public ITioGameplayI
 	GENERATED_BODY()
 	
 protected:
+
+	UPROPERTY(ReplicatedUsing = "OnRep_IsActive")
+	bool bIsAcitve;
+
+	UFUNCTION()
+	void OnRep_IsActive();
 
 	UPROPERTY(EditAnywhere, Category = "Powerup")
 	float RespawnTime;
@@ -29,11 +36,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	USphereComponent* SphereComp;
 
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UStaticMeshComponent* MeshComp;
+
 public:
 	void Interact_Implementation(APawn* InstigatorPawn) override;
 
 public:
 	ATioPowerupActor();
-
 
 };

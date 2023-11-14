@@ -10,6 +10,7 @@ class UPawnSensingComponent;
 class UTioAttributeComponent;
 class UUserWidget;
 class UTioWorldUserWidget;
+class UTioActionComponent;
 
 UCLASS()
 class ACTIONROGUELIKE_API ATioAICharacter : public ACharacter
@@ -17,7 +18,6 @@ class ACTIONROGUELIKE_API ATioAICharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	ATioAICharacter();
 
 protected:
@@ -27,7 +27,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> HealthBarWidgetClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> SpottedWidgetClass;
+
+	UPROPERTY(VisibleAnywhere, Category = "Effects")
+	FName TimeToHitParamName;
+
+	UPROPERTY(VisibleAnywhere, Category = "Effects")
+	FName TargetActorKey;
+
 	void SetTargetActor(AActor* NewTarget);
+
+	AActor* GetTargetActor() const;
 
 	virtual void PostInitializeComponents() override;
 
@@ -35,14 +46,17 @@ protected:
 	void OnHealthChanged(AActor* InstigatorActor, UTioAttributeComponent* OwningComp, float NewHealth, float Delta);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UTioActionComponent* ActionComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UTioAttributeComponent* AttributeComp;
 
 	UPROPERTY(VisibleAnywhere, Category = "Compoents")
 	UPawnSensingComponent* PawnSensingComp;
 
-	UPROPERTY(VisibleAnywhere, Category = "Effects")
-	FName TimeToHitParamName;
-
 	UFUNCTION()
 	void OnPawnSeen(APawn* Pawn);
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastPawnSeen();
 };

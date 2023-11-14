@@ -3,6 +3,7 @@
 
 #include "TioPowerupActor.h"
 #include "Components/SphereComponent.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 ATioPowerupActor::ATioPowerupActor()
@@ -11,7 +12,16 @@ ATioPowerupActor::ATioPowerupActor()
     SphereComp->SetCollisionProfileName("Powerup");
     RootComponent = SphereComp;
 
+	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>("MeshComp");
+	// Disable collision, instead we use SphereComp to handle interaction queries
+	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MeshComp->SetupAttachment(RootComponent);
+
     RespawnTime = 10.0f;
+
+    SetReplicates(true);
+
+    bIsAcitve = true;
 }
 
 void ATioPowerupActor::Interact_Implementation(APawn* InstigatorPawn)
@@ -34,10 +44,20 @@ void ATioPowerupActor::HideAndCooldownPowerup()
 
 void ATioPowerupActor::SetPowerupState(bool bNweIsActive)
 {
-    SetActorEnableCollision(bNweIsActive);
-
-    // 第二个参数控制显示是否传递到孩子节点
-    RootComponent->SetVisibility(bNweIsActive, true);
+    bIsAcitve = bNweIsActive;
+    OnRep_IsActive();
 }
 
+void ATioPowerupActor::OnRep_IsActive()
+{
+	SetActorEnableCollision(bIsAcitve);
 
+	// 第二个参数控制显示是否传递到孩子节点
+	RootComponent->SetVisibility(bIsAcitve, true);
+}
+
+void ATioPowerupActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(ATioPowerupActor, bIsAcitve);
+}

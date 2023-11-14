@@ -29,6 +29,6 @@ public:
 	FVector WorldOffset;
 
 	// 添加UE4资产后当该资产被摧毁后，相应的指针将被设置为nullptr
-	UPROPERTY(BlueprintReadOnly, Category = "UI")
+	UPROPERTY(BlueprintReadOnly, Category = "UI", meta = (ExposeOnSpawn=true))
 	AActor* AttachedActor;
 };

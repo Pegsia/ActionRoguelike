@@ -15,12 +15,11 @@ class ACTIONROGUELIKE_API ATioPowerup_HealthPotion : public ATioPowerupActor
 	GENERATED_BODY()
 	
 protected:
+	UPROPERTY(EditAnywhere, Category = "Powerup")
+	int32 CreditsCost;
 
 	UPROPERTY(EditAnywhere, Category = "Powerup")
 	float HealAmount;
-
-	UPROPERTY(EditAnywhere, Category = "Compoents")
-	UStaticMeshComponent* MeshComp;
 
 public:
 

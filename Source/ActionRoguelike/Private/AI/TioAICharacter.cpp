@@ -12,6 +12,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "TioActionComponent.h"
 
 // Sets default values
 ATioAICharacter::ATioAICharacter()
@@ -20,12 +21,15 @@ ATioAICharacter::ATioAICharacter()
 
     AttributeComp = CreateDefaultSubobject<UTioAttributeComponent>("AttributeComp");
 
+    ActionComp = CreateDefaultSubobject<UTioActionComponent>("ActionComp");
+
     AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
     GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Ignore);
     GetMesh()->SetGenerateOverlapEvents(true);
 
     TimeToHitParamName = "TimeToHit";
+    TargetActorKey = "TargetActor";
 }
 
 void ATioAICharacter::PostInitializeComponents()
@@ -86,15 +90,39 @@ void ATioAICharacter::SetTargetActor(AActor* NewTarget)
 	AAIController* AIC = Cast<AAIController>(GetController());
 	if (AIC)
 	{
-		AIC->GetBlackboardComponent()->SetValueAsObject("TargetActor", NewTarget);;
+		AIC->GetBlackboardComponent()->SetValueAsObject(TargetActorKey, NewTarget);;
 	}
+}
+
+AActor* ATioAICharacter::GetTargetActor() const
+{
+    AAIController* AIC = Cast<AAIController>(GetController());
+    if (AIC)
+    {
+        return Cast<AActor>(AIC->GetBlackboardComponent()->GetValueAsObject(TargetActorKey));
+    }
+    return nullptr;
 }
 
 void ATioAICharacter::OnPawnSeen(APawn* Pawn)
 {
-    SetTargetActor(Pawn);
-    DrawDebugString(GetWorld(), GetActorLocation(), "PLAYER SPOTTED", nullptr, FColor::White, 4.0f, true);
+    if (GetTargetActor() != Pawn)
+    {
+        SetTargetActor(Pawn);
+        MulticastPawnSeen();
+    }
+    //DrawDebugString(GetWorld(), GetActorLocation(), "PLAYER SPOTTED", nullptr, FColor::White, 4.0f, true);
 }
 
+void ATioAICharacter::MulticastPawnSeen_Implementation()
+{
+	UTioWorldUserWidget* NewWidget = CreateWidget<UTioWorldUserWidget>(GetWorld(), SpottedWidgetClass);
+	if (NewWidget)
+	{
+		NewWidget->AttachedActor = this;
+
+		NewWidget->AddToViewport(10);
+	}
+}
 
 

@@ -9,6 +9,7 @@
 #include "DrawDebugHelpers.h"
 #include "TioAttributeComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "TioActionComponent.h"
 
 
 // Sets default values
@@ -16,26 +17,25 @@ ATioCharacter::ATioCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
-	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
+	
+	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>("SpringArmComp");
 	SpringArmComp->bUsePawnControlRotation = true;
 	SpringArmComp->SetupAttachment(RootComponent);
 
-	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
+	CameraComp = CreateDefaultSubobject<UCameraComponent>("CameraComp");
 	CameraComp->SetupAttachment(SpringArmComp);
 
-	InteractionComp = CreateDefaultSubobject<UTioInteractionComponent>(TEXT("InteractionComp"));
+	InteractionComp = CreateDefaultSubobject<UTioInteractionComponent>("InteractionComp");
 
-	AttributeComp = CreateDefaultSubobject<UTioAttributeComponent>(TEXT("AttributeComp"));
+	AttributeComp = CreateDefaultSubobject<UTioAttributeComponent>("AttributeComp");
+
+	ActionComp = CreateDefaultSubobject<UTioActionComponent>("ActionComp");
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 
 	bUseControllerRotationYaw = false;
 
-	AttackAnimeDelay = 0.16f;
-
 	TimeToHitParamName = "TimeToHit";
-	HandSocketName = "Muzzle_01";
 }
 
 void ATioCharacter::PostInitializeComponents()
@@ -60,21 +60,6 @@ void ATioCharacter::BeginPlay()
 void ATioCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-
-	//const float DrawScale = 100.0f;
-	//const float Thickness = 5.0f;
-
-	//FVector LineStart = GetActorLocation();
-	//// offset to the right of pawn
-	//LineStart += GetActorRightVector() * 100.0f;
-	//// Set line end in direction of the actor's forward
-	//FVector ActorDirection_LineEnd = LineStart + (GetActorForwardVector() * 100.0f);
-	//// Draw Actor's Direction
-	//DrawDebugDirectionalArrow(GetWorld(), LineStart, ActorDirection_LineEnd, DrawScale, FColor::Yellow, false, 0.0f, 0, Thickness);
-
-	//FVector ControllerDirection_LineEnd = LineStart + (GetControlRotation().Vector() * 100.0f);
-	//DrawDebugDirectionalArrow(GetWorld(), LineStart, ControllerDirection_LineEnd, DrawScale, FColor::Green, false, 0.0f, 0, Thickness);
 }
 
 // Called to bind functionality to input
@@ -93,6 +78,9 @@ void ATioCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("SecondaryAttack", IE_Pressed, this, &ATioCharacter::BlackHoleAttack);
 	PlayerInputComponent->BindAction("Dash", IE_Pressed, this, &ATioCharacter::Dash);
 	PlayerInputComponent->BindAction("PrimaryInteract", IE_Pressed, this, &ATioCharacter::PrimaryInteract);
+
+	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &ATioCharacter::SprintStart);
+	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ATioCharacter::SprintStop);
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ATioCharacter::Jump);
 }
@@ -116,97 +104,44 @@ void ATioCharacter::MoveForward(float value)
 
 void ATioCharacter::MoveRight(float value)
 {
+	//使用controller的rotation来确定pawn的rotation
 	//AddMovementInput(GetActorRightVector(), value);
 	FRotator ControlRot = GetControlRotation();
 	ControlRot.Pitch = 0.0f;
 	ControlRot.Roll = 0.0f;
 
-	//// X = Forward(Red)
-	//// Y = Right(Green)
-	//// Z = Up(Blue)
+	// X = Forward(Red)
+	// Y = Right(Green)
+	// Z = Up(Blue)
 
 	FVector RightVector = FRotationMatrix(ControlRot).GetScaledAxis(EAxis::Y);
 	AddMovementInput(RightVector, value);
 }
 
 
-void ATioCharacter::PrimaryAttack()
+void ATioCharacter::SprintStart()
 {
-	StartAttackEffects();
-	GetWorldTimerManager().SetTimer(TimerHandle_PrimaryAttack, this, &ATioCharacter::PrimaryAttack_TimeElapsed, AttackAnimeDelay);
+	ActionComp->StartActionByName(this, "Sprint");
 }
 
-void ATioCharacter::PrimaryAttack_TimeElapsed()
+void ATioCharacter::SprintStop()
 {
-	SpawnProjectile(ProjectileClass);
+	ActionComp->StopActionByName(this, "Sprint");
+}
+
+void ATioCharacter::PrimaryAttack()
+{
+	ActionComp->StartActionByName(this, "PrimaryAttack");
 }
 
 void ATioCharacter::BlackHoleAttack()
 {
-	StartAttackEffects();
-	GetWorldTimerManager().SetTimer(TimerHandle_BlackholeAttack, this, &ATioCharacter::BlackHoleAttack_TimeElapsed, AttackAnimeDelay);
-}
-
-void ATioCharacter::BlackHoleAttack_TimeElapsed()
-{
-	SpawnProjectile(BlackHoleProjectileClass);
+	ActionComp->StartActionByName(this, "Blackhole");
 }
 
 void ATioCharacter::Dash()
 {
-	StartAttackEffects();
-	GetWorldTimerManager().SetTimer(TimerHandle_Dash, this, &ATioCharacter::Dash_TimeElapsed, AttackAnimeDelay);
-}
-
-void ATioCharacter::Dash_TimeElapsed()
-{
-	SpawnProjectile(DashProjectileClass);
-}
-
-void ATioCharacter::StartAttackEffects()
-{
-	PlayAnimMontage(AttackAnim);
-
-	UGameplayStatics::SpawnEmitterAttached(CastingEffect, GetMesh(), HandSocketName, FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::SnapToTarget);
-}
-
-void ATioCharacter::SpawnProjectile(TSubclassOf<AActor> ClassToSpawn)
-{
-	if (ensureAlways(ClassToSpawn))
-	{
-		FVector HandLocation = GetMesh()->GetSocketLocation(HandSocketName);
-		
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		SpawnParams.Instigator = this;
-
-		FCollisionShape Shape;
-		Shape.SetSphere(20.0f);
-
-		FCollisionQueryParams Params;
-		Params.AddIgnoredActor(this);
-
-		FCollisionObjectQueryParams ObjParams;
-		ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
-		ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
-		ObjParams.AddObjectTypesToQuery(ECC_Pawn);
-
-		FVector TraceStart = CameraComp->GetComponentLocation();
-
-		FVector TraceEnd = CameraComp->GetComponentLocation() + (GetControlRotation().Vector() * 5000);
-
-		FHitResult Hit;
-		if (GetWorld()->SweepSingleByObjectType(Hit, TraceStart, TraceEnd,FQuat::Identity, ObjParams, Shape, Params))
-		{
-			TraceEnd = Hit.ImpactPoint;
-		}
-
-		//Find new direction/rotation from Hand pointing to impact point in world
-		FRotator ProjRotation = FRotationMatrix::MakeFromX(TraceEnd - HandLocation).Rotator();
-
-		FTransform SpawnTM = FTransform(ProjRotation, HandLocation);
-		GetWorld()->SpawnActor<AActor>(ClassToSpawn, SpawnTM, SpawnParams);
-	}
+	ActionComp->StartActionByName(this, "Dash");
 }
 
 void ATioCharacter::PrimaryInteract()
@@ -216,17 +151,23 @@ void ATioCharacter::PrimaryInteract()
 
 void ATioCharacter::OnHealthChanged(AActor* InstigatorActor, UTioAttributeComponent* OwninComp, float NewHealth, float Delta)
 {
-	UE_LOG(LogTemp, Log, TEXT("ACTOR Health %f Take %f Damage"), NewHealth, Delta);
+	//UE_LOG(LogTemp, Log, TEXT("ACTOR Health %f Take %f Damage"), NewHealth, Delta);
 	if (Delta < 0.0f)
 	{
-		UE_LOG(LogTemp, Log, TEXT("ACTOR Hit"));
+		//UE_LOG(LogTemp, Log, TEXT("ACTOR Hit"));
 		GetMesh()->SetScalarParameterValueOnMaterials(TimeToHitParamName, GetWorld()->TimeSeconds);
+
+		// Rage added equal to damage received(Abs to turn into positive rage number)
+		float RageDelta = FMath::Abs(Delta);
+		AttributeComp->ApplyRageChange(InstigatorActor, RageDelta);
 	}
 
 	if (NewHealth <= 0.0f && Delta < 0.0f)
 	{
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		DisableInput(PC);
+
+		SetLifeSpan(5.0f);
 	}
 }
 

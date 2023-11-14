@@ -15,7 +15,6 @@ void ATioAIController::BeginPlay()
 	}
 
 	
-	
 	// WorldContextObject 描述为在游戏世界中的物品或controller
 	/*APawn* MyPawn = UGameplayStatics::GetPlayerPawn(this, 0);
 	if (MyPawn)

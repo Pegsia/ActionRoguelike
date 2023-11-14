@@ -4,6 +4,7 @@
 #include "TioItemChest.h"
 #include "Components/StaticMeshComponent.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 ATioItemChest::ATioItemChest()
@@ -25,10 +26,29 @@ ATioItemChest::ATioItemChest()
 	Burst->bAutoActivate = false;
 
 	TargetPitch = 110;
+
+	SetReplicates(true);
 }
 
 void ATioItemChest::Interact_Implementation(APawn* InstigatorPawn)
 {
-	LidMesh->SetRelativeRotation(FRotator(TargetPitch, 0, 0));
+	bLidOpened = !bLidOpened; // 来回开关
+	OnRep_LidOpened();        // bLidOpened变化后不会在server端自动触发OnRep函数
 }
 
+void ATioItemChest::OnActorLoaded_Implementation()
+{
+	OnRep_LidOpened();
+}
+
+void ATioItemChest::OnRep_LidOpened()
+{
+	float NextPitch = bLidOpened ? TargetPitch : 0.0f; // 先变化再触发这个函数，所以条件是反着的
+	LidMesh->SetRelativeRotation(FRotator(NextPitch, 0, 0));
+}
+
+void ATioItemChest::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ATioItemChest, bLidOpened);
+}
